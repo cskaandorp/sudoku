@@ -117,7 +117,6 @@ class Sudoku:
         # remove this value from row/col/square, row:
         if type(col) != set:
             col = set([col])
-        print(col, type(col))
         for c in set(range(9)) - col:
             self.puzzle[(c, row)]['value'] = self.puzzle[(c, row)]['value'] - values
 
@@ -321,7 +320,64 @@ if __name__ == '__main__':
     s = Sudoku()
     s.read_data('puzzle3.csv')
     print(s)
-    s.solve()
+    print('1. clean')
+    s.clean()
+    print(s)
+    print('infer')
+    s.infer()
+    print(s)
+    print('isolate')
+    s.isolate()
+    print(s)
+
+    print('2. clean')
+    s.clean()
+    print(s)
+    print('infer')
+    s.infer()
+    print(s)
+    print('isolate')
+    s.isolate()
+    print(s)
+
+    print('3. clean')
+    s.clean()
+    print(s)
+    print('infer')
+    s.infer()
+    print(s)
+    print('isolate')
+    s.isolate()
+    print(s)
+
+    print('4. clean')
+    s.clean()
+    print(s)
+    print('infer')
+    s.infer()
+    print(s)
+    print('isolate')
+    s.isolate()
+    print(s)
+
+    print('5. clean')
+    s.clean()
+    print(s)
+    print('infer')
+    s.infer()
+    print(s)
+    print('isolate')
+    s.isolate()
+    print(s)
+
+    print('6. clean')
+    s.clean()
+    print(s)
+    print('infer')
+    s.infer()
+    print(s)
+    print('isolate')
+    s.isolate()
     print(s)
 
 
