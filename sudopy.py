@@ -108,20 +108,35 @@ class Sudoku:
         value = self.puzzle[(col, row)]
         if len(value['value']) == 1 and not value['processed']:
             isolated = value['value']
-            # remove this value from row/col/square, row:
-            for c in set(range(9)) - set([col]):
-                self.puzzle[(c, row)]['value'] = self.puzzle[(c, row)]['value'] - isolated
-            # column
-            for r in set(range(9)) - set([row]):
-                self.puzzle[(col, r)]['value'] = self.puzzle[(col, r)]['value'] - isolated
-            # square
-            # what are the square cells around isolated value
-            square = value['square'] 
-            for c in range(3 * square[0], 3 * square[0] + 3):
-                for r in range(3 * square[1], 3 * square[1] + 3):
-                    if c != col and r != row:
-                        self.puzzle[(c, r)]['value'] = self.puzzle[(c, r)]['value'] - isolated
+            self.__propagate_row(col, row, isolated) # row
+            self.__propagate_column(col, row, isolated) # column
+            self.__propagate_square(col, row, isolated) # square
             self.puzzle[(col, row)]['processed'] = True
+
+    def __propagate_row(self, col, row, values):
+        # remove this value from row/col/square, row:
+        if type(col) != set:
+            col = set([col])
+        print(col, type(col))
+        for c in set(range(9)) - col:
+            self.puzzle[(c, row)]['value'] = self.puzzle[(c, row)]['value'] - values
+
+    def __propagate_column(self, col, row, values):
+        # column
+        if type(row) != set:
+            row = set([row])
+        for r in set(list(range(9))) - row:
+            self.puzzle[(col, r)]['value'] = self.puzzle[(col, r)]['value'] - values
+
+    def __propagate_square(self, col, row, values):
+        # square
+        square = self.puzzle[(col, row)]['square'] 
+        for c in range(3 * square[0], 3 * square[0] + 3):
+            for r in range(3 * square[1], 3 * square[1] + 3):
+                if c != col and r != row:
+                    self.puzzle[(c, r)]['value'] = self.puzzle[(c, r)]['value'] - values
+            
+
 
 
     def isolate(self):
@@ -191,20 +206,90 @@ class Sudoku:
     
     def infer(self):
         self.__infer_column_wise()
-        print('-------')
+        #self.__infer_row_wise()
+        pass
 
 
     def __infer_column_wise(self):
+        # this is about mini columns
         for s_row in range(3):
             for s_col in range(3):
-                square = (s_col, s_row)
-                # I have my square, collect cells
-                cells = { key:c for key, c in self.puzzle.items() 
-                    if c['square'] == square }
-                # process these cells column-wise within the square
-                
+                # per square
+                segs = []
+                col_range = range(3 * s_col, 3 * s_col + 3)
+                row_range = range(3 * s_row, 3 * s_row + 3)
+                for c in col_range:
+                    mini_col = []
+                    for r in row_range:
+                        cell_value = self.puzzle[(c, r)]['value']
+                        if len(cell_value) > 1:
+                            mini_col.append(cell_value)
+                    # mini col is ready
+                    segs.append(set().union(*mini_col))
+                # I have my 3 segments (columns) of the square
+                # now we start comparing
+                [seg_0, seg_1, seg_2] = segs
+                col_0 = seg_0 - seg_1 - seg_2
+                col_1 = seg_1 - seg_0 - seg_2
+                col_2 = seg_2 - seg_0 - seg_1
 
-                print(cells)
+                if len(col_0) > 0:
+                    self.__propagate_column(col_range[0], set(row_range), col_0)
+                if len(col_1) > 0:
+                    self.__propagate_column(col_range[1], set(row_range), col_1)
+                if len(col_2) > 0:
+                    self.__propagate_column(col_range[2], set(row_range), col_2)
+
+    def __infer_row_wise(self):
+        # this is about mini rows
+        for s_row in range(3):
+            for s_col in range(3):
+                # per square
+                segs = []
+                col_range = range(3 * s_col, 3 * s_col + 3)
+                row_range = range(3 * s_row, 3 * s_row + 3)
+                for r in row_range:
+                    mini_row = []
+                    for c in col_range:
+                        print((c, r))
+                        cell_value = self.puzzle[(c, r)]['value']
+                        if len(cell_value) > 1:
+                            mini_row.append(cell_value)
+                    # mini row is ready
+                    segs.append(set().union(*mini_row))
+                # I have my 3 segments (columns) of the square
+                # now we start comparing
+                
+                [seg_0, seg_1, seg_2] = segs
+                row_0 = seg_0 - seg_1 - seg_2
+                row_1 = seg_1 - seg_0 - seg_2
+                row_2 = seg_2 - seg_0 - seg_1
+
+                if len(row_0) > 0:
+                    print('row_0', row_0)
+                    self.__propagate_row(set(col_range), row_range[0], row_0)
+                if len(row_1) > 0:
+                    print('row_0', row_1)
+                    self.__propagate_row(set(col_range), row_range[1], row_1)
+                if len(row_2) > 0:
+                    print('row_0', row_2)
+                    self.__propagate_row(set(col_range), row_range[2], row_2)
+                        
+
+                    
+
+
+
+
+
+
+                # # I have my square, collect cells
+                # cells = { key:c for key, c in self.puzzle.items() 
+                #     if c['square'] == square }
+                # # process these cells column-wise within the square
+
+
+                # print(cells)
         # for col in range(9):
         #     # divide column into square segments
         #     indexes = [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
