@@ -100,8 +100,18 @@ class Sudoku:
     def clean(self):
         """remove potential value pv if in row/col/square 
         we have pv isolated"""
-        for (col, row), _ in self.puzzle.items():
-            self.__propagate_cell(col, row)
+        score, _ = self.state()
+        while(True):
+            # clean all cells by propagating isolated value
+            for (col, row), _ in self.puzzle.items():
+                self.__propagate_cell(col, row)
+            # assessement
+            new_score, _ = self.state()
+            if new_score > score:
+                score = new_score
+            else:
+                break
+
 
 
     def __propagate_cell(self, col, row):
@@ -205,7 +215,7 @@ class Sudoku:
     
     def infer(self):
         self.__infer_column_wise()
-        #self.__infer_row_wise()
+        self.__infer_row_wise()
         pass
 
 
@@ -250,7 +260,6 @@ class Sudoku:
                 for r in row_range:
                     mini_row = []
                     for c in col_range:
-                        print((c, r))
                         cell_value = self.puzzle[(c, r)]['value']
                         if len(cell_value) > 1:
                             mini_row.append(cell_value)
@@ -265,13 +274,10 @@ class Sudoku:
                 row_2 = seg_2 - seg_0 - seg_1
 
                 if len(row_0) > 0:
-                    print('row_0', row_0)
                     self.__propagate_row(set(col_range), row_range[0], row_0)
                 if len(row_1) > 0:
-                    print('row_0', row_1)
                     self.__propagate_row(set(col_range), row_range[1], row_1)
                 if len(row_2) > 0:
-                    print('row_0', row_2)
                     self.__propagate_row(set(col_range), row_range[2], row_2)
                         
 
@@ -318,66 +324,7 @@ class Sudoku:
 
 if __name__ == '__main__':
     s = Sudoku()
-    s.read_data('puzzle3.csv')
+    s.read_data('puzzle57.csv')
     print(s)
-    print('1. clean')
-    s.clean()
+    s.solve()
     print(s)
-    print('infer')
-    s.infer()
-    print(s)
-    print('isolate')
-    s.isolate()
-    print(s)
-
-    print('2. clean')
-    s.clean()
-    print(s)
-    print('infer')
-    s.infer()
-    print(s)
-    print('isolate')
-    s.isolate()
-    print(s)
-
-    print('3. clean')
-    s.clean()
-    print(s)
-    print('infer')
-    s.infer()
-    print(s)
-    print('isolate')
-    s.isolate()
-    print(s)
-
-    print('4. clean')
-    s.clean()
-    print(s)
-    print('infer')
-    s.infer()
-    print(s)
-    print('isolate')
-    s.isolate()
-    print(s)
-
-    print('5. clean')
-    s.clean()
-    print(s)
-    print('infer')
-    s.infer()
-    print(s)
-    print('isolate')
-    s.isolate()
-    print(s)
-
-    print('6. clean')
-    s.clean()
-    print(s)
-    print('infer')
-    s.infer()
-    print(s)
-    print('isolate')
-    s.isolate()
-    print(s)
-
-
