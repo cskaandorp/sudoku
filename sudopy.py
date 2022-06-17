@@ -1,8 +1,5 @@
 from collections import OrderedDict
-from optparse import Values
-from turtle import pos
 import pandas as pd
-from sqlalchemy import over
 
 class Sudoku:
     def __init__(self):
@@ -28,13 +25,29 @@ class Sudoku:
         # set    
         self.puzzle[(col, row)]['value'] = value
         # and propagate
-        self.__propagate_cell(col, row)
+        self.clean()
 
 
     def print_raw(self, what='all', col=None, row=None):
         if what == 'all':
             for cell in self.puzzle.keys():
                 print(cell, self.puzzle[cell]['value'])
+        elif what == 'overview':
+            result = ''
+            for row in range(0, 9):
+                if row % 3 == 0 and row > 0:
+                    result += '-----------------------\n'
+                for col in range(0, 9):
+                    value = list(self.puzzle[(col, row)]['value'])
+                    if len(value) == 1:
+                        result += f' { value[0] }'
+                    else:
+                        result += f' {value}'
+                    if (col + 1) % 3 == 0 and col < 8:
+                        result += ' |'
+                    if col == 8:
+                        result += '\n'
+            print(result + '\n')
         elif what == 'cell':
             cell = (col, row)
             print(cell, self.puzzle[cell]['value'])
@@ -82,19 +95,20 @@ class Sudoku:
     def solve(self):
         solved = False
         score = 0.0
+        counter = 0
         # initial cleaning
         while not(solved):
-
             self.clean()
             self.infer()
+            #self.clean()
             self.isolate()
-
+            counter += 1
             (new_score, solved) = s.state()
-
             if new_score > score:
                 score = new_score
             else:
                 break
+        return counter
 
 
     def clean(self):
@@ -124,7 +138,6 @@ class Sudoku:
             self.puzzle[(col, row)]['processed'] = True
 
     def __propagate_row(self, col, row, values):
-        # remove this value from row/col/square, row:
         if type(col) != set:
             col = set([col])
         for c in set(range(9)) - col:
@@ -136,6 +149,7 @@ class Sudoku:
             row = set([row])
         for r in set(list(range(9))) - row:
             self.puzzle[(col, r)]['value'] = self.puzzle[(col, r)]['value'] - values
+
 
     def __propagate_square(self, col, row, values):
         # square
@@ -213,10 +227,9 @@ class Sudoku:
                         self.set_cell(col, row, value)
 
     
-    def infer(self):
+    def infer(self, counter=None):
         self.__infer_column_wise()
         self.__infer_row_wise()
-        pass
 
 
     def __infer_column_wise(self):
@@ -242,12 +255,15 @@ class Sudoku:
                 col_1 = seg_1 - seg_0 - seg_2
                 col_2 = seg_2 - seg_0 - seg_1
 
-                if len(col_0) > 0:
+                if len(col_0) > 0 and len(col_0) <= 3:
                     self.__propagate_column(col_range[0], set(row_range), col_0)
-                if len(col_1) > 0:
+                    self.clean()
+                if len(col_1) > 0 and len(col_1) <= 3:
                     self.__propagate_column(col_range[1], set(row_range), col_1)
-                if len(col_2) > 0:
+                    self.clean()
+                if len(col_2) > 0 and len(col_2) <= 3:
                     self.__propagate_column(col_range[2], set(row_range), col_2)
+                    self.clean()
 
     def __infer_row_wise(self):
         # this is about mini rows
@@ -273,58 +289,21 @@ class Sudoku:
                 row_1 = seg_1 - seg_0 - seg_2
                 row_2 = seg_2 - seg_0 - seg_1
 
-                if len(row_0) > 0:
+                if len(row_0) > 0 and len(row_0) <= 3:
                     self.__propagate_row(set(col_range), row_range[0], row_0)
-                if len(row_1) > 0:
+                    self.clean()
+                if len(row_1) > 0 and len(row_1) <= 3:
                     self.__propagate_row(set(col_range), row_range[1], row_1)
-                if len(row_2) > 0:
+                    self.clean()
+                if len(row_2) > 0 and len(row_2) <= 3:
                     self.__propagate_row(set(col_range), row_range[2], row_2)
-                        
+                    self.clean()
 
                     
-
-
-
-
-
-
-                # # I have my square, collect cells
-                # cells = { key:c for key, c in self.puzzle.items() 
-                #     if c['square'] == square }
-                # # process these cells column-wise within the square
-
-
-                # print(cells)
-        # for col in range(9):
-        #     # divide column into square segments
-        #     indexes = [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
-        #     divisions = [
-        #         [self.puzzle[(col, r)]['value'] for r in sub 
-        #             if len(self.puzzle[(col, r)]['value']) > 1] 
-        #         for sub in indexes
-        #     ]
-        #     unions = [set().union(*d) for d in divisions]
-        #     inters = [unions[s].intersection(*d) for s, d in enumerate(divisions)]
-
-                
-                
-
-            #print(divisions, unions, inters)
-            # seg_1 = [self.puzzle[(col, r)]['values'] for r in [0, 1, 2]]
-            # seg_2 = [self.puzzle[(col, r)]['values'] for r in [3, 4, 5]]
-            # seg_3 = [self.puzzle[(col, r)]['values'] for r in [6, 7, 8]]
-            # # remove known values
-            # clean_1 = [v for v in seg_1 if len(v) > 1]
-            # clean_2 = [v for v in seg_2 if len(v) > 1]
-            # clean_3 = [v for v in seg_3 if len(v) > 1]
-
-
-
-
-
 if __name__ == '__main__':
     s = Sudoku()
-    s.read_data('puzzle57.csv')
+    s.read_data('puzzle13.csv')
     print(s)
-    s.solve()
+    iterations = s.solve()
     print(s)
+    print(f'Solved in {iterations} iterations')
