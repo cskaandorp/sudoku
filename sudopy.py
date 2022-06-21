@@ -1,5 +1,28 @@
-from collections import OrderedDict
+import argparse
 import pandas as pd
+
+from collections import OrderedDict
+from itertools import chain, combinations, groupby
+
+
+# provide all possible combinations with a minimum length of <min>
+def all_subsets(collection, min):
+    result = []
+    if len(collection) >= min:
+        result = chain(
+            *map(
+                lambda x: combinations(collection, x),
+                range(min, len(collection)+1)
+            )
+        )
+    return result
+
+# checks if every element is identical in iterable
+def all_equal(iterable):
+    g = groupby(iterable)
+    return next(g, True) and not next(g, False)
+
+    
 
 class Sudoku:
     def __init__(self):
@@ -67,7 +90,6 @@ class Sudoku:
         print('----------------')
 
 
-
     def __repr__(self) -> str:
         result = ''
         for row in range(0, 9):
@@ -86,8 +108,20 @@ class Sudoku:
         return result + '\n'
 
 
+    def dump_in_list(self):
+        result = []
+        for (c, r), value in self.puzzle.items():
+            values = list(value['value'])
+            if len(values) == 1:
+                result.append((c + 1, r + 1, values[0]))
+
+        return result
+
+
     def state(self):
-        solved = [len(v['value']) == 1 for _k, v in self.puzzle.items()]
+        solved = [
+            len(v['value']) == 1 for _k, v in self.puzzle.items()
+        ]
         score = solved.count(True) / 81.0
         return score, all(solved)
 
@@ -100,15 +134,15 @@ class Sudoku:
         while not(solved):
             self.clean()
             self.infer()
-            #self.clean()
             self.isolate()
+            self.x_wing()
             counter += 1
             (new_score, solved) = s.state()
             if new_score > score:
                 score = new_score
             else:
                 break
-        return counter
+        return solved, counter
 
 
     def clean(self):
@@ -119,7 +153,7 @@ class Sudoku:
             # clean all cells by propagating isolated value
             for (col, row), _ in self.puzzle.items():
                 self.__propagate_cell(col, row)
-            # assessement
+            # assessment
             new_score, _ = self.state()
             if new_score > score:
                 score = new_score
@@ -141,14 +175,16 @@ class Sudoku:
         if type(col) != set:
             col = set([col])
         for c in set(range(9)) - col:
-            self.puzzle[(c, row)]['value'] = self.puzzle[(c, row)]['value'] - values
+            self.puzzle[(c, row)]['value'] = \
+                self.puzzle[(c, row)]['value'] - values
 
     def __propagate_column(self, col, row, values):
         # column
         if type(row) != set:
             row = set([row])
         for r in set(list(range(9))) - row:
-            self.puzzle[(col, r)]['value'] = self.puzzle[(col, r)]['value'] - values
+            self.puzzle[(col, r)]['value'] = \
+                self.puzzle[(col, r)]['value'] - values
 
 
     def __propagate_square(self, col, row, values):
@@ -157,7 +193,8 @@ class Sudoku:
         for c in range(3 * square[0], 3 * square[0] + 3):
             for r in range(3 * square[1], 3 * square[1] + 3):
                 if c != col and r != row:
-                    self.puzzle[(c, r)]['value'] = self.puzzle[(c, r)]['value'] - values
+                    self.puzzle[(c, r)]['value'] = \
+                        self.puzzle[(c, r)]['value'] - values
             
 
 
@@ -299,11 +336,69 @@ class Sudoku:
                     self.__propagate_row(set(col_range), row_range[2], row_2)
                     self.clean()
 
+
+    def x_wing(self):
+        numbers = { i:[] for i in range(1, 10) }
+        for coords, value in self.puzzle.items():
+            values = value['value']
+            if len(values) > 1:
+                for v in values:
+                    numbers[v].append(coords)
+        # at this point I have per possible value a list
+        # of coordinates where the value can be found. I have an "x-wing"
+        # if the value can be found in different rows in the same columns
+        for num in numbers.keys():
+            # give me an overview in which rows this value can be found
+            rows = sorted(list(set([ r for (_, r) in numbers[num] ])))
+
+            # and I need to know per row in which columns I can find this value
+            cols = { r: [] for r in rows }
+            for c, r in numbers[num]:
+                cols[r].append(c)
+            # and convert the collection of columns into sets to facilitate 
+            # an equality check, like [3, 4] is the same as [4, 3]
+            cols = { r:set(c) for r, c in cols.items() }
+
+            # now I want all possible permutations of these row-numbers, only 
+            # take 2 or more rows (zero and 1 is not relevant), sort these 
+            # combinations based on length to ensure I get the biggest 
+            # combinations first
+            row_combinations = sorted(
+                list(all_subsets(rows, 2)), 
+                reverse=True, 
+                key=lambda x:len(x) 
+            )
+            # now I want the biggest possible X wing, that means as many rows 
+            # as I can get in which this number can be found in the same 
+            # columns
+            for row_numbers in row_combinations:
+                # for every row number in comb I want to know if <num> can 
+                # be found in the same columns (per different row). If that's
+                # the case, and the amount of columns is identical to the 
+                # amount of rows, then we have an x-wing of order
+                # len(row_numbers)
+                column_positions = [ cols[r] for r in row_numbers]
+                if all_equal(column_positions) and \
+                    len(row_numbers) == len(column_positions[0]):
+                    # we found an x-wing, we have to remove the occurrence of 
+                    # <num> from all other rows in the columns we have in 
+                    # column-positions
+                    for c in column_positions[0]:
+                        self.__propagate_column(c, set(row_numbers), {num})
+                        self.clean()
+
                     
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('puzzle', help='csv filename of puzzle')
+    args = parser.parse_args()
+
     s = Sudoku()
-    s.read_data('puzzle13.csv')
+    s.read_data(args.puzzle)
     print(s)
-    iterations = s.solve()
+    solved, iterations = s.solve()
     print(s)
-    print(f'Solved in {iterations} iterations')
+    state = 'Not solved' if not(solved) else 'Solved'
+    print(f'{state} in {iterations} iterations')
+
+
